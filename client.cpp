@@ -2,6 +2,7 @@
 #include <fstream>
 #include <unistd.h>
 #include <cstring>
+#include <cstdlib>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
