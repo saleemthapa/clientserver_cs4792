@@ -163,7 +163,7 @@ while ((totalBytesReceived < 100 * 1024 * 1024) && ((bytesRead = recv(clientSock
     	}
 
 	// Update the start time for the next iteration of the loop
-	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+	// start_time = std::chrono::steady_clock::now();
 
 	}
 

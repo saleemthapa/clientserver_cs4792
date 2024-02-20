@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <chrono> // Include for chrono library
 
 void error(const char *msg) {
     perror(msg);
@@ -52,10 +53,19 @@ int main(int argc, char *argv[]) {
     }
 
     char buffer[1024];
+    auto start_time = std::chrono::steady_clock::now(); // Start time
     while (inputFile.read(buffer, sizeof(buffer))) {
         ssize_t bytesSent = send(clientSocket, buffer, inputFile.gcount(), 0);
         if (bytesSent == -1) {
             std::cerr << "Error sending data to server" << std::endl;
+            close(clientSocket);
+            inputFile.close();
+            return -1;
+        }
+        auto current_time = std::chrono::steady_clock::now(); // Current time
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time).count(); // Calculate elapsed time
+        if (elapsed_seconds > 10) {
+            std::cerr << "Timeout: Unable to send more data to server" << std::endl;
             close(clientSocket);
             inputFile.close();
             return -1;
@@ -70,4 +80,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
 
