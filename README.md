@@ -52,14 +52,29 @@ Problem: Handling signals (e.g., SIGQUIT, SIGTERM) to exit gracefully.
   Solution: Implemented a signal handler function in the server program to catch signals and perform cleanup actions before exiting.
 Problem: Resolving compilation warnings about the use of C++11 features.
   Solution: Updated code to explicitly declare types instead of using auto, ensuring compatibility with older C++ standards.
+Problem : Time out mechanism doesn't seems to be working till now. 
 
+HOW TO DOWNLOAD THE PROGRAM
+Step 1 : go to terminal and type "git clone https://github.com/saleemthapa/clientserver_cs4792.git"
+Step 2: go inside the downloaded file " cd clientserver_cs4792"
 HOW TO RUN THE PROGRAM:
 Step 1 : You need to have two machines either two different one or in a virtual environment.
 Step 2 : Find the ipv4 address of the machine where the server will be runnning ( for mac users : type "ifconfig" , for windows users: "ipconfig")
 ** Note down that address**
-Step 3 : Open terminal and run the command " make"
+Step 3 :(Make sure you are inside clientserver_cs4792 directory) Open terminal and run the command " make"
 Step 4: Run the server first using  this command " ./server 8080 save "
 Step 5 : In another machine , run the command "make"
 Step 6 : Before running the client , make sure to have some file that needs to sent to server.
 Step 7 : Run the client using this command " ./client <ip address of the server> <filename>
 *** For example : ./client 192.168.1.1 abc.txt
+
+Resources Used :
+Websites:
+https://www.bogotobogo.com/cplusplus/sockets_server_client.php#google_vignette
+https://www.linuxhowtos.org/C_C++/socket.htm
+https://www.geeksforgeeks.org/socket-programming-cc/
+
+Youtube:
+https://www.youtube.com/watch?v=gntyAFoZp-E&t=3807s
+
+
