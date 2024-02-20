@@ -2,13 +2,22 @@
 #include <fstream>
 #include <unistd.h>
 #include <cstdlib>
+#include <csignal>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+volatile sig_atomic_t signal_received = 0;
+
 void error(const char *msg) {
     perror(msg);
     exit(1);
+}
+
+// Signal handler function
+void signal_handler(int signum) {
+    // Set the flag to indicate that a signal has been received
+    signal_received = 1;
 }
 
 void setupSaveDirectory(const char* saveDirectory) {
@@ -26,8 +35,19 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+	 // Set up signal handling
+    signal(SIGQUIT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
+
     int serverPort = atoi(argv[1]);
     const char* saveDirectory = argv[2];
+
+	  // Validate server port
+    if (serverPort <= 0 || serverPort > 65535) {
+        error("Invalid port number");
+    }
+
 
     // Create the save directory with appropriate permissions
     setupSaveDirectory(saveDirectory);
@@ -110,6 +130,14 @@ int main(int argc, char *argv[]) {
 
     // Close the server socket (this will never be reached in this loop)
     close(serverSocket);
+
+	// Exit with appropriate code
+    if (signal_received == 1) {
+        exit(EXIT_SUCCESS);
+    } else {
+        exit(EXIT_FAILURE);
+    }
+
 
     return 0;
 }
