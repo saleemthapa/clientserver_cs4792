@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
-#include <cstring>
 #include <cstdlib>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,10 +11,11 @@ void error(const char *msg) {
     exit(1);
 }
 
-void setupSaveDirectory() {
-    int status = system("sudo chmod 777 save");
+void setupSaveDirectory(const char* saveDirectory) {
+    std::string absolutePath = "./" + std::string(saveDirectory);
+    int status = system(("mkdir -p " + absolutePath).c_str());
     if (status == -1) {
-        std::cerr << "Error running chmod command" << std::endl;
+        std::cerr << "Error creating directory" << std::endl;
         exit(1);
     }
 }
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     const char* saveDirectory = argv[2];
 
     // Create the save directory with appropriate permissions
-    setupSaveDirectory();
+    setupSaveDirectory(saveDirectory);
 
     // Create a socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -78,27 +78,9 @@ int main(int argc, char *argv[]) {
 
         std::cout << "Connection " << connectionId << " accepted from " << inet_ntoa(clientAddress.sin_addr) << std::endl;
 
-        // Receive filename and data size from the client
-        char filename[256];
-        size_t dataSize;
-        ssize_t bytesRead = recv(clientSocket, &dataSize, sizeof(dataSize), 0);
-        if (bytesRead != sizeof(dataSize)) {
-            std::cerr << "Error receiving data size" << std::endl;
-            close(clientSocket);
-            continue; // Continue to accept other connections
-        }
-        dataSize = ntohl(dataSize); // Convert from network byte order to host byte order
-
-        bytesRead = recv(clientSocket, filename, sizeof(filename), 0);
-        if (bytesRead <= 0) {
-            std::cerr << "Error receiving filename" << std::endl;
-            close(clientSocket);
-            continue; // Continue to accept other connections
-        }
-
         // Create folder if not exists
-        std::string savePath = std::string(saveDirectory) + std::to_string(connectionId) + ".file";
-        system(("mkdir -p " + std::string(saveDirectory)).c_str());
+        std::string savePath = std::string(saveDirectory) + "/" + std::to_string(connectionId) + ".file";
+        setupSaveDirectory(saveDirectory); // Use the provided save directory
 
         // Open file in save directory
         std::ofstream outputFile(savePath, std::ios::out | std::ios::binary);
@@ -108,18 +90,15 @@ int main(int argc, char *argv[]) {
             continue; // Continue to accept other connections
         }
 
+        // Receive data from the client
         char buffer[1024];
-        size_t totalBytesReceived = 0;
-        while (totalBytesReceived < dataSize) {
-            bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
-            if (bytesRead <= 0) {
-                std::cerr << "Error receiving data from client" << std::endl;
-                close(clientSocket);
-                outputFile.close();
-                break; // Continue to accept other connections
-            }
-            totalBytesReceived += bytesRead;
+        ssize_t bytesRead;
+        while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
             outputFile.write(buffer, bytesRead);
+        }
+
+        if (bytesRead < 0) {
+            std::cerr << "Error receiving data from client" << std::endl;
         }
 
         // Close the socket and the file
@@ -134,4 +113,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
