@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ctime>
+#include <chrono>
 
 volatile sig_atomic_t signal_received = 0;
 
@@ -18,6 +20,11 @@ void error(const char *msg) {
 void signal_handler(int signum) {
     // Set the flag to indicate that a signal has been received
     signal_received = 1;
+if (signum == SIGINT) {
+        std::cerr << "Received SIGINT (Ctrl+C). Exiting gracefully." << std::endl;
+        // Perform cleanup actions here if needed
+        exit(signum);
+    }
 }
 
 void setupSaveDirectory(const char* saveDirectory) {
@@ -36,10 +43,11 @@ int main(int argc, char *argv[]) {
     }
 
 	 // Set up signal handling
+    // Set up signal handling for SIGINT (Ctrl+C)
+    signal(SIGINT, signal_handler);
     signal(SIGQUIT, signal_handler);
     signal(SIGTERM, signal_handler);
-
-
+while(!signal_received){
     int serverPort = atoi(argv[1]);
     const char* saveDirectory = argv[2];
 
@@ -81,7 +89,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Server listening on port " << serverPort << "..." << std::endl;
 
     // Initialize connection counter
-    int connectionId = 0;
+    //int connectionId = 0;
 
     while (true) {
         // Accept a connection from a client
@@ -92,6 +100,11 @@ int main(int argc, char *argv[]) {
             std::cerr << "Error accepting connection" << std::endl;
             continue; // Continue to accept other connections
         }
+	//Resets timer 
+	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
+	//Generate connection ID
+	static int connectionId = 0;
 
         // Increment connection counter
         connectionId++;
@@ -109,13 +122,57 @@ int main(int argc, char *argv[]) {
             close(clientSocket);
             continue; // Continue to accept other connections
         }
-
+/*
         // Receive data from the client
         char buffer[1024];
         ssize_t bytesRead;
         while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
             outputFile.write(buffer, bytesRead);
+
+// Check if 10 seconds have passed without receiving data
+            std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+	    std::chrono::seconds elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time);    
+	if (elapsed_seconds > 10) {
+                std::cerr << "Error: No data received for over 10 seconds" << std::endl;
+                outputFile << "ERROR";
+                outputFile.flush(); // Flush the output buffer
+                break;
+            }
+
+		
         }
+*/
+	// Receive data from the client
+char buffer[1024];
+ssize_t totalBytesReceived = 0;
+ssize_t bytesRead;
+while ((totalBytesReceived < 100 * 1024 * 1024) && ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)) {
+    // Write received data to the output file
+    outputFile.write(buffer, bytesRead);
+    totalBytesReceived += bytesRead;
+
+    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+    std::chrono::seconds elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time);
+    // Check if 10 seconds have passed without receiving data
+	
+    	if (elapsed_seconds > std::chrono::seconds(10)) {
+        	std::cerr << "Error: No data received for over 10 seconds" << std::endl;
+        	outputFile << "ERROR"; // Write "ERROR" to the file
+        	outputFile.flush(); // Flush the output buffer to ensure the data is written immediately
+       		break; // Exit the loop
+    	}
+
+	// Update the start time for the next iteration of the loop
+	std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
+	}
+
+	// If the loop exits due to reaching the 100 MiB limit, print an error message
+	if (totalBytesReceived >= 100 * 1024 * 1024) {
+    	std::cerr << "Error: Maximum file size exceeded (100 MiB)" << std::endl;
+    	outputFile << "ERROR"; // Write "ERROR" to the file
+    	outputFile.flush(); // Flush the output buffer to ensure the data is written immediately
+	}
 
         if (bytesRead < 0) {
             std::cerr << "Error receiving data from client" << std::endl;
@@ -138,6 +195,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-
-    return 0;
 }
+    return 0;
+}//main loop
